@@ -1,0 +1,157 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*.*.*" # Runs only when a tag like 1.0.0 is pushed
+
+permissions:
+  contents: write # Needed to create the release
+
+env:
+  # Your binary name
+  BINARY_NAME: wp-mini-epub-cli-interactive
+
+jobs:
+  # =================================================================
+  # ==                     Build Binaries for macOS                  ==
+  # =================================================================
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Add Intel target
+        run: rustup target add x86_64-apple-darwin
+
+      - name: Build for Apple Silicon (ARM64)
+        run: cargo build --release --target aarch64-apple-darwin
+
+      - name: Build for Intel (x86_64)
+        run: cargo build --release --target x86_64-apple-darwin
+
+      - name: Package binaries
+        run: |
+          # Get version from the tag, e.g., "1.0.0" from "refs/tags/1.0.0"
+          VERSION=${GITHUB_REF_NAME}
+          
+          # Create archives for each target
+          tar -czvf ${{ env.BINARY_NAME }}-v${VERSION}-aarch64-apple-darwin.tar.gz -C target/aarch64-apple-darwin/release ${{ env.BINARY_NAME }}
+          tar -czvf ${{ env.BINARY_NAME }}-v${VERSION}-x86_64-apple-darwin.tar.gz -C target/x86_64-apple-darwin/release ${{ env.BINARY_NAME }}
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: macos-binaries
+          path: |
+            ${{ env.BINARY_NAME }}-v*-aarch64-apple-darwin.tar.gz
+            ${{ env.BINARY_NAME }}-v*-x86_64-apple-darwin.tar.gz
+
+  # =================================================================
+  # ==                    Build Binaries for Windows                 ==
+  # =================================================================
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Add targets
+        run: |
+          rustup target add i686-pc-windows-msvc
+          rustup target add aarch64-pc-windows-msvc
+
+      - name: Build for all targets
+        run: |
+          cargo build --release --target x86_64-pc-windows-msvc
+          cargo build --release --target i686-pc-windows-msvc
+          cargo build --release --target aarch64-pc-windows-msvc
+
+      - name: Package binaries
+        shell: pwsh
+        run: |
+          # Get version from the tag
+          $VERSION = $env:GITHUB_REF_NAME
+
+          # Create archives for each target
+          Compress-Archive -Path "target\x86_64-pc-windows-msvc\release\${{ env.BINARY_NAME }}.exe" -DestinationPath "${{ env.BINARY_NAME }}-v${VERSION}-x86_64-pc-windows-msvc.zip"
+          Compress-Archive -Path "target\i686-pc-windows-msvc\release\${{ env.BINARY_NAME }}.exe" -DestinationPath "${{ env.BINARY_NAME }}-v${VERSION}-i686-pc-windows-msvc.zip"
+          Compress-Archive -Path "target\aarch64-pc-windows-msvc\release\${{ env.BINARY_NAME }}.exe" -DestinationPath "${{ env.BINARY_NAME }}-v${VERSION}-aarch64-pc-windows-msvc.zip"
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-binaries
+          path: |
+            ${{ env.BINARY_NAME }}-v*-x86_64-pc-windows-msvc.zip
+            ${{ env.BINARY_NAME }}-v*-i686-pc-windows-msvc.zip
+            ${{ env.BINARY_NAME }}-v*-aarch64-pc-windows-msvc.zip
+
+  # =================================================================
+  # ==                     Build Binaries for Linux                  ==
+  # =================================================================
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      
+      # NOTE: For cross-compiling i686 and aarch64 on an x86_64 runner,
+      # you still need to install the appropriate linkers. For simplicity,
+      # this example only builds the native target. Uncomment and configure
+      # the linker setup if you need the other targets.
+      #
+      # - name: Install cross-compilation tools
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y gcc-multilib gcc-aarch64-linux-gnu
+
+      - name: Add targets
+        run: |
+          rustup target add i686-unknown-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
+
+      - name: Build for 64-bit Linux (x86_64)
+        run: cargo build --release --target x86_64-unknown-linux-gnu
+        
+      # - name: Build for 32-bit Linux (i686)
+      #   run: cargo build --release --target i686-unknown-linux-gnu
+        
+      # - name: Build for ARM64 Linux (aarch64)
+      #   run: cargo build --release --target aarch64-unknown-linux-gnu
+
+      - name: Package binaries
+        run: |
+          # Get version from the tag
+          VERSION=${GITHUB_REF_NAME}
+
+          # Create archives for each target
+          tar -czvf ${{ env.BINARY_NAME }}-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz -C target/x86_64-unknown-linux-gnu/release ${{ env.BINARY_NAME }}
+          # tar -czvf ${{ env.BINARY_NAME }}-v${VERSION}-i686-unknown-linux-gnu.tar.gz -C target/i686-unknown-linux-gnu/release ${{ env.BINARY_NAME }}
+          # tar -czvf ${{ env.BINARY_NAME }}-v${VERSION}-aarch64-unknown-linux-gnu.tar.gz -C target/aarch64-unknown-linux-gnu/release ${{ env.BINARY_NAME }}
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: linux-binaries
+          path: |
+            ${{ env.BINARY_NAME }}-v*-x86_64-unknown-linux-gnu.tar.gz
+            # ${{ env.BINARY_NAME }}-v*-i686-unknown-linux-gnu.tar.gz
+            # ${{ env.BINARY_NAME }}-v*-aarch64-unknown-linux-gnu.tar.gz
+
+  # =================================================================
+  # ==               Create Release and Upload Binaries            ==
+  # =================================================================
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-mac, build-windows, build-linux]
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          # The destination directory for all downloaded files
+          path: release-assets
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # The `files` property supports glob patterns to upload all binaries
+          files: release-assets/**/*
