@@ -2,6 +2,13 @@
 name = "wp-mini-epub-cli-interactive"
 version = "0.1.0-alpha.1"
 edition = "2024"
+description = "An Interactive CLI tool to download WP Storeis into epubs."
+authors = ["WattDownload <contact@wattdownload.com>"]
+license = "AGPL-3.0-only"
+documentation = "https://docs.rs/wp-mini-epub-cli-interactive"
+homepage = "https://wprs.dev/crate-wp-mini-epub-cli-interactive"
+repository = "https://github.com/WattDownload/crate-wp-mini-epub-cli-interactive"
+
 
 [dependencies]
 anyhow = "1.0.100"
