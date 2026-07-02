@@ -1,6 +1,6 @@
 [package]
 name = "wp-mini-epub-cli-interactive"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 edition = "2024"
 description = "An Interactive CLI tool to download WP Storeis into epubs."
 authors = ["WattDownload <contact@wattdownload.com>"]
@@ -11,10 +11,10 @@ repository = "https://github.com/WattDownload/crate-wp-mini-epub-cli-interactive
 
 
 [dependencies]
-anyhow = "1.0.102"
+anyhow = "1.0.103"
 cliclack = "0.5.4"
-reqwest = { version = "0.13.2", default-features = false, features = ["rustls", "http2", "cookies", "json"] }
-tokio = { version = "1.52.1", features = ["rt-multi-thread", "macros"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["rustls", "http2", "cookies", "json"] }
+tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
-wp-mini = "0.2.0-alpha.3"
-wp-mini-epub = "0.9.0-alpha.2"
+wp-mini = "0.2.0-alpha.4"
+wp-mini-epub = "0.9.0-alpha.3"
